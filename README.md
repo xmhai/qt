@@ -58,6 +58,60 @@ Portfolio simulator
 Performance metrics
 Parameter testing
 
+## Data Ingestion
+
+OHLCV history is pulled from Yahoo Finance (via `yfinance`) and stored in the SQLite
+database configured by `DATABASE_URI` in [`src/config.py`](src/config.py). Tables are
+defined in [`src/data/models.py`](src/data/models.py); the ingestion function lives in
+[`src/data/data_ingestion.py`](src/data/data_ingestion.py).
+
+Run directly as a script, from the project root or from `src/data/` — it locates the
+`src` package automatically either way:
+
+```bash
+python src\data\data_ingestion.py "D05.SI"
+python src\data\data_ingestion.py "AAPL" "JPM" "BAC"
+```
+
+With no date flags, it fetches the earliest available history through today
+(`yfinance period="max"`). Pass `--start-date YYYY-MM-DD` / `--end-date YYYY-MM-DD` to
+narrow the range:
+
+```bash
+python src\data\data_ingestion.py "D05.SI" --start-date 2024-01-01
+```
+
+It can also be called as a library function:
+
+```bash
+python -c "from src.data.data_ingestion import ingest_ohlcv; print(ingest_ohlcv(['JPM', 'BAC']))"
+```
+
+`ingest_ohlcv(symbols, start_date=None, end_date=None)` creates a `securities` row per
+new symbol, inserts only dates not already stored (safe to re-run), and records each run
+in `ingestion_log`.
+
+### Symbol format for non-US exchanges
+
+Yahoo Finance requires an exchange suffix for tickers outside the US. Use the local
+exchange code, not the raw ticker:
+
+| Exchange | Suffix | Example |
+|---|---|---|
+| SGX (Singapore) | `.SI` | DBS Group Holdings (D05) → `D05.SI` |
+| HKEX (Hong Kong) | `.HK` | |
+| LSE (London) | `.L` | |
+
+To load DBS (SGX: D05), all history from the earliest available date:
+
+```bash
+python src\data\data_ingestion.py "D05.SI"
+```
+
+The `securities.symbol` column stores the Yahoo Finance symbol as-is (e.g. `D05.SI`),
+and `ohlcv` prices are in the security's native currency (SGD for SGX-listed names) —
+no FX conversion is applied during ingestion.
+
 ## Roadmap
 Level 1
 Simple rules

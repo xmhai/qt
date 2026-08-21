@@ -1,2 +1,4 @@
 # SQLite db
-.db
+*.db
+
+__pycache__/
